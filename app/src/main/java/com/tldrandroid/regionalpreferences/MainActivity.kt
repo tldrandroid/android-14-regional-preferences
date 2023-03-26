@@ -1,5 +1,7 @@
 package com.tldrandroid.regionalpreferences
 
+import android.content.Intent
+import android.content.IntentFilter
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -16,16 +18,28 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.core.content.ContextCompat
 import com.tldrandroid.regionalpreferences.model.MainUiState
 import com.tldrandroid.regionalpreferences.model.MainViewModel
 import com.tldrandroid.regionalpreferences.ui.theme.RegionalPreferencesTheme
 
 @ExperimentalMaterial3Api
-class MainActivity : ComponentActivity() {
+class MainActivity : ComponentActivity(), LocaleSettingsChangedReceiver.Listener {
     private val mainViewModel = MainViewModel()
+    private val receiver = LocaleSettingsChangedReceiver()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val intentFilter = IntentFilter(Intent.ACTION_LOCALE_CHANGED)
+        receiver.registerListener(this)
+
+        ContextCompat.registerReceiver(
+            this,
+            receiver,
+            intentFilter,
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
 
         setContent {
             val uiState by mainViewModel.uiState.collectAsState()
@@ -34,6 +48,16 @@ class MainActivity : ComponentActivity() {
                 Main(uiState)
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        receiver.unregisterListener()
+        unregisterReceiver(receiver)
+    }
+
+    override fun onLocaleChanged() {
+        mainViewModel.refreshLocalePreferences()
     }
 }
 
